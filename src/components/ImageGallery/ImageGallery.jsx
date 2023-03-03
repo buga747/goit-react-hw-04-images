@@ -1,6 +1,6 @@
 import ImageGalleryItem from 'components/ImageGalleryItem';
 import PropTypes from 'prop-types';
-import { Component } from 'react';
+import { useEffect, useState } from 'react';
 import { fetchImages } from '../../service/api-service';
 import { toast } from 'react-toastify';
 import { Gallery } from './ImageGallery.styled';
@@ -13,83 +13,63 @@ const Status = {
   RESOLVED: 'resolved',
   REJECTED: 'rejected',
 };
-class ImageGallery extends Component {
-  state = {
-    status: Status.IDLE,
-    error: null,
-    images: [],
-    totalHits: null,
-    showLoadMoreBtn: false,
-  };
+function ImageGallery({ query, page, onLoad }) {
+  const [status, setStatus] = useState(Status.IDLE);
+  const [error, setError] = useState(null);
+  const [images, setImages] = useState([]);
+  const [showLoadMoreBtn, setShowLoadMoreBtn] = useState(false);
 
-  componentDidUpdate(prevProps, prevState) {
-    if (
-      prevProps.page !== this.props.page ||
-      prevProps.query !== this.props.query
-    ) {
-      this.setState({
-        status: Status.PENDING,
-      });
-
-      fetchImages(this.props.page, this.props.query)
-        .then(data => {
-          console.log(data);
-          if (this.props.page === 1 && data.totalHits !== 0) {
-            toast.success(`We found ${data.totalHits} images!`);
-            this.setState({ images: [] });
-          }
-
-          if (data.totalHits === 0) {
-            toast.error(
-              `UpsOops!!! We did not find any images for this request. Try changing the query.`
-            );
-          }
-
-          this.setState({
-            showLoadMoreBtn: true,
-            status: Status.RESOLVED,
-          });
-          this.setState(prevState => ({
-            images: [...prevState.images, ...data.hits],
-          }));
-
-          if (this.state.images.length + data.hits.length >= data.totalHits) {
-            this.setState({ showLoadMoreBtn: false });
-          }
-        })
-        .catch(error => this.setState({ error, status: Status.REJECTED }));
+  useEffect(() => {
+    if (query === '') {
+      return;
     }
-  }
 
-  loadMore = () => {
-    this.setState(prevState => ({
-      page: prevState.page + 1,
-    }));
-  };
+    setStatus(Status.PENDING);
 
-  render() {
-    const { status, images, showLoadMoreBtn } = this.state;
+    fetchImages(page, query)
+      .then(data => {
+        console.log(data);
+        if (page === 1 && data.totalHits !== 0) {
+          toast.success(`We found ${data.totalHits} images!`);
+          setImages([]);
+        }
 
-    return (
-      <>
-        {status === 'pending' && <Loader />}
+        if (data.totalHits === 0) {
+          toast.error(
+            `UpsOops!!! We did not find any images for this request. Try changing the query.`
+          );
+        }
 
-        <Gallery>
-          {images.map(({ id, webformatURL, tags, largeImageURL }) => {
-            return (
-              <ImageGalleryItem
-                key={id}
-                url={webformatURL}
-                tags={tags}
-                largeImg={largeImageURL}
-              />
-            );
-          })}
-        </Gallery>
-        {showLoadMoreBtn && <Button onClick={this.props.onLoad} />}
-      </>
-    );
-  }
+        setStatus(Status.RESOLVED);
+        setShowLoadMoreBtn(true);
+        setImages(prevState => [...prevState, ...data.hits]);
+
+        if (page >= Math.ceil(data.totalHits / 12)) {
+          setShowLoadMoreBtn(false);
+        }
+      })
+      .catch(er => setError(er), setStatus(Status.REJECTED));
+  }, [page, query]);
+
+  return (
+    <>
+      {status === 'pending' && <Loader />}
+      {status === 'rejected' && <p>{error}</p>}
+      <Gallery>
+        {images.map(({ id, webformatURL, tags, largeImageURL }) => {
+          return (
+            <ImageGalleryItem
+              key={id}
+              url={webformatURL}
+              tags={tags}
+              largeImg={largeImageURL}
+            />
+          );
+        })}
+      </Gallery>
+      {showLoadMoreBtn && <Button onClick={onLoad} />}
+    </>
+  );
 }
 
 ImageGallery.propTypes = {
