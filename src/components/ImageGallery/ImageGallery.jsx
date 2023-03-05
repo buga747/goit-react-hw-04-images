@@ -7,14 +7,16 @@ import { Gallery } from './ImageGallery.styled';
 import Loader from 'components/Loader';
 import Button from 'components/Button';
 
-const Status = {
-  IDLE: 'idle',
-  PENDING: 'pending',
-  RESOLVED: 'resolved',
-  REJECTED: 'rejected',
-};
+// const Status = {
+//   IDLE: 'idle',
+//   PENDING: 'pending',
+//   RESOLVED: 'resolved',
+//   REJECTED: 'rejected',
+// };
 function ImageGallery({ query, page, onLoad }) {
-  const [status, setStatus] = useState(Status.IDLE);
+  const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+
   const [error, setError] = useState(null);
   const [images, setImages] = useState([]);
   const [showLoadMoreBtn, setShowLoadMoreBtn] = useState(false);
@@ -24,37 +26,51 @@ function ImageGallery({ query, page, onLoad }) {
       return;
     }
 
-    setStatus(Status.PENDING);
+    const getPhotos = async () => {
+      setLoading(true);
+      // setShowLoadMoreBtn(false);
+      setLoadingMore(true);
 
-    fetchImages(page, query)
-      .then(data => {
-        console.log(data);
-        if (page === 1 && data.totalHits !== 0) {
-          toast.success(`We found ${data.totalHits} images!`);
+      if (page > 1) {
+        setLoading(false);
+      }
+
+      if (page === 1) {
+        setImages([]);
+      }
+      try {
+        const { totalHits, hits } = await fetchImages(page, query);
+
+        if (page === 1 && totalHits !== 0) {
+          toast.success(`We found ${totalHits} images!`);
           setImages([]);
         }
 
-        if (data.totalHits === 0) {
+        if (totalHits === 0) {
           toast.error(
             `UpsOops!!! We did not find any images for this request. Try changing the query.`
           );
         }
-
-        setStatus(Status.RESOLVED);
         setShowLoadMoreBtn(true);
-        setImages(prevState => [...prevState, ...data.hits]);
+        setImages(prevState => [...prevState, ...hits]);
+        setLoadingMore(false);
 
-        if (page >= Math.ceil(data.totalHits / 12)) {
+        if (page >= Math.ceil(totalHits / 12)) {
           setShowLoadMoreBtn(false);
         }
-      })
-      .catch(er => setError(er), setStatus(Status.REJECTED));
+      } catch (error) {
+        setError(error.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    getPhotos();
   }, [page, query]);
 
   return (
     <>
-      {status === 'pending' && <Loader />}
-      {status === 'rejected' && <p>{error}</p>}
+      {loading && <Loader />}
+      {{ error } && <p>{error}</p>}
       <Gallery>
         {images.map(({ id, webformatURL, tags, largeImageURL }) => {
           return (
@@ -67,13 +83,15 @@ function ImageGallery({ query, page, onLoad }) {
           );
         })}
       </Gallery>
-      {showLoadMoreBtn && <Button onClick={onLoad} />}
+      {showLoadMoreBtn && <Button onClick={onLoad} isLoading={loadingMore} />}
     </>
   );
 }
 
 ImageGallery.propTypes = {
   query: PropTypes.string.isRequired,
+  page: PropTypes.number.isRequired,
+  onLoad: PropTypes.func.isRequired,
 };
 
 export default ImageGallery;
