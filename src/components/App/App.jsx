@@ -9,15 +9,9 @@ import ImageGallery from '../ImageGallery/ImageGallery';
 
 function App() {
   const [query, setQuery] = useState('');
-  const [page, setPage] = useState(1);
 
   const handleSearchSubmit = ({ query }) => {
     setQuery(query);
-    setPage(1);
-  };
-
-  const loadMore = () => {
-    setPage(prevState => prevState + 1);
   };
 
   return (
@@ -25,7 +19,7 @@ function App() {
       <ToastContainer />
 
       <Searchbar onSubmit={handleSearchSubmit} />
-      <ImageGallery query={query} page={page} onLoad={loadMore} />
+      <ImageGallery query={query} />
       <GlobalStyle />
     </Container>
   );

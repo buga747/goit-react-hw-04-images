@@ -13,13 +13,18 @@ import Button from 'components/Button';
 //   RESOLVED: 'resolved',
 //   REJECTED: 'rejected',
 // };
-function ImageGallery({ query, page, onLoad }) {
+function ImageGallery({ query }) {
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
 
   const [error, setError] = useState(null);
   const [images, setImages] = useState([]);
   const [showLoadMoreBtn, setShowLoadMoreBtn] = useState(false);
+  const [page, setPage] = useState(1);
+
+  useEffect(() => {
+    setPage(1);
+  }, [query]);
 
   useEffect(() => {
     if (query === '') {
@@ -28,7 +33,6 @@ function ImageGallery({ query, page, onLoad }) {
 
     const getPhotos = async () => {
       setLoading(true);
-      // setShowLoadMoreBtn(false);
       setLoadingMore(true);
 
       if (page > 1) {
@@ -59,6 +63,7 @@ function ImageGallery({ query, page, onLoad }) {
           setShowLoadMoreBtn(false);
         }
       } catch (error) {
+        console.log(error);
         setError(error.message);
       } finally {
         setLoading(false);
@@ -66,6 +71,10 @@ function ImageGallery({ query, page, onLoad }) {
     };
     getPhotos();
   }, [page, query]);
+
+  const loadMore = () => {
+    setPage(prevState => prevState + 1);
+  };
 
   return (
     <>
@@ -83,15 +92,13 @@ function ImageGallery({ query, page, onLoad }) {
           );
         })}
       </Gallery>
-      {showLoadMoreBtn && <Button onClick={onLoad} isLoading={loadingMore} />}
+      {showLoadMoreBtn && <Button onClick={loadMore} isLoading={loadingMore} />}
     </>
   );
 }
 
 ImageGallery.propTypes = {
   query: PropTypes.string.isRequired,
-  page: PropTypes.number.isRequired,
-  onLoad: PropTypes.func.isRequired,
 };
 
 export default ImageGallery;
